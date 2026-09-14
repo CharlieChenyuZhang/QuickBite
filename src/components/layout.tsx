@@ -13,7 +13,6 @@ import {
 import { useSession } from '@/lib/session'
 import { AccountMenu } from '@/components/account-menu'
 import { useCart } from '@/lib/queries'
-import { isDemoMode } from '@/lib/api'
 import { useFavorites } from '@/lib/favorites'
 import { cn } from '@/lib/utils'
 
@@ -152,7 +151,6 @@ export function Layout() {
             </button>
           </form>
           <div className="header-actions">
-            {isDemoMode && <span className="demo-pill">Demo</span>}
             {isAuthenticated ? (
               <AccountMenu />
             ) : (
