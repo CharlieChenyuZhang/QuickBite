@@ -29,9 +29,11 @@ beforeEach(async () => {
   vi.resetModules()
   vi.stubEnv('VITE_DEMO_MODE', 'false')
   vi.stubEnv('VITE_API_BASE_URL', '')
+  vi.stubEnv('VITE_LOGOUT_PATH', '')
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockReset()
   sessionStorage.clear()
+  localStorage.clear()
   document.cookie = 'XSRF-TOKEN=; max-age=0; path=/'
   api = (await import('./api')).api
 })
@@ -53,8 +55,8 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-async function mountSession() {
-  const { act, createElement } = await import('react')
+async function mountSession(strictMode = false) {
+  const { act, createElement, StrictMode } = await import('react')
   const { createRoot } = await import('react-dom/client')
   const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query')
   const { SessionProvider, useSession } = await import('./session')
@@ -80,13 +82,12 @@ async function mountSession() {
     container.remove()
   }
   await act(async () => {
-    root.render(
-      createElement(
-        QueryClientProvider,
-        { client },
-        createElement(SessionProvider, null, createElement(Probe)),
-      ),
+    const provider = createElement(
+      QueryClientProvider,
+      { client },
+      createElement(SessionProvider, null, createElement(Probe)),
     )
+    root.render(strictMode ? createElement(StrictMode, null, provider) : provider)
   })
   await settle()
   return {
@@ -169,11 +170,12 @@ describe('authentication cache boundaries', () => {
     expect(sessionStorage.getItem('quickbite.display-name.v1')).toBeNull()
   })
 
-  it('does not restore private cart data when a forgotten session probe finishes late', async () => {
+  it('does not restore private cart data when a cleared session probe finishes late', async () => {
     const oldResponse = deferred<Response>()
     fetchMock.mockReturnValueOnce(oldResponse.promise)
     const harness = await mountSession()
-    await harness.act(async () => harness.session.forgetSession())
+    const { clearPrivateSession } = await import('./queries')
+    await harness.act(() => clearPrivateSession(harness.client))
     await harness.act(async () => {
       oldResponse.resolve(
         jsonResponse({
@@ -376,5 +378,417 @@ describe('authentication and failure handling', () => {
       new Response('{', { headers: { 'Content-Type': 'application/json' } }),
     )
     await expect(api.getCart()).rejects.toMatchObject({ name: 'ApiError', status: 502 })
+  })
+})
+
+describe('logout API contract', () => {
+  it('posts logout with cookies, CSRF protection, and a bounded request signal', async () => {
+    document.cookie = 'XSRF-TOKEN=logout%2Btoken; path=/'
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+    await expect(api.logout()).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/logout',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        signal: expect.any(AbortSignal),
+      }),
+    )
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('X-XSRF-TOKEN')).toBe(
+      'logout+token',
+    )
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Accept')).toContain('text/html')
+    expect(fetchMock.mock.calls[0][1]?.body).toBeUndefined()
+  })
+
+  it('accepts Spring logout success redirects but still rejects failed-login redirects', async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirectedHtml('https://api.example.com/login?logout'))
+      .mockResolvedValueOnce(redirectedHtml('https://api.example.com/login?error'))
+      .mockResolvedValueOnce(redirectedHtml('https://api.example.com/login?logout&error'))
+    await expect(api.logout()).resolves.toBeUndefined()
+    await expect(
+      api.login({ username: 'alex@example.com', password: 'bad' }),
+    ).rejects.toMatchObject({ status: 401 })
+    await expect(api.logout()).rejects.toMatchObject({ status: 401 })
+  })
+
+  it('supports a configured logout path relative to the backend origin', async () => {
+    vi.stubEnv('VITE_LOGOUT_PATH', '/auth/end-session')
+    vi.resetModules()
+    const configuredApi = (await import('./api')).api
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+    await configuredApi.logout()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/end-session')
+  })
+
+  it('rejects an absolute logout URL instead of sending cookies to another origin', async () => {
+    vi.stubEnv('VITE_LOGOUT_PATH', 'https://other.example.com/logout')
+    vi.resetModules()
+    const configuredApi = (await import('./api')).api
+    await expect(configuredApi.logout()).rejects.toMatchObject({ status: 500 })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('verified sign-out', () => {
+  const cart = { total_price: 15, order_items: [{ menu_item_name: 'Private lunch', price: 15 }] }
+
+  it.each(['empty', 'redirect'])(
+    'clears account data after %s logout and an uncached unauthorized cart probe',
+    async (responseType) => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(cart))
+        .mockResolvedValueOnce(
+          responseType === 'empty'
+            ? new Response(null, { status: 204 })
+            : redirectedHtml('https://api.example.com/login?logout'),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      sessionStorage.setItem('quickbite.display-name.v1', 'alex@example.com')
+      const harness = await mountSession()
+      expect(harness.session.isAuthenticated).toBe(true)
+      await harness.act(() => harness.session.signOut())
+      await harness.settle()
+      expect(harness.session.isAuthenticated).toBe(false)
+      expect(harness.session.isSigningOut).toBe(false)
+      expect(harness.session.sessionId).toBeNull()
+      expect(harness.client.getQueryData(['cart'])).toBeUndefined()
+      expect(sessionStorage.getItem('quickbite.display-name.v1')).toBeNull()
+      expect(sessionStorage.getItem('quickbite.session-generation.v1')).toBeNull()
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        3,
+        '/api/cart',
+        expect.objectContaining({ cache: 'no-store', credentials: 'include' }),
+      )
+    },
+  )
+
+  it.each([403, 404, 500])(
+    'keeps the account and cart on logout HTTP %i and permits retry',
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(cart))
+        .mockResolvedValueOnce(new Response(null, { status }))
+        .mockResolvedValueOnce(new Response(null, { status: 204 }))
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      sessionStorage.setItem('quickbite.display-name.v1', 'alex@example.com')
+      const harness = await mountSession()
+      const sessionId = harness.session.sessionId
+      await harness.act(async () => {
+        await expect(harness.session.signOut()).rejects.toMatchObject({ status })
+      })
+      await harness.settle()
+      expect(harness.session.isAuthenticated).toBe(true)
+      expect(harness.session.username).toBe('alex@example.com')
+      expect(harness.session.sessionId).toBe(sessionId)
+      expect(harness.session.isSigningOut).toBe(false)
+      expect(harness.client.getQueryData(['cart'])).toEqual(cart)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      await harness.act(() => harness.session.signOut())
+      await harness.settle()
+      expect(harness.session.isAuthenticated).toBe(false)
+    },
+  )
+
+  it('keeps the account after network failure without automatically retrying logout', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const harness = await mountSession()
+    await harness.act(async () => {
+      await expect(harness.session.signOut()).rejects.toMatchObject({ status: 0 })
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.session.isSigningOut).toBe(false)
+    expect(harness.client.getQueryData(['cart'])).toEqual(cart)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not claim success when the backend cookie still authenticates', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(jsonResponse(cart))
+    const harness = await mountSession()
+    await harness.act(async () => {
+      await expect(harness.session.signOut()).rejects.toMatchObject({
+        status: 409,
+        message: 'Your session is still active. Please try signing out again.',
+      })
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.client.getQueryData(['cart'])).toEqual(cart)
+  })
+
+  it('keeps account state when the post-logout verification request fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockRejectedValueOnce(new TypeError('Verification timed out'))
+    const harness = await mountSession()
+    const sessionId = harness.session.sessionId
+    await harness.act(async () => {
+      await expect(harness.session.signOut()).rejects.toMatchObject({ status: 0 })
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.session.sessionId).toBe(sessionId)
+    expect(harness.session.isSigningOut).toBe(false)
+    expect(harness.client.getQueryData(['cart'])).toEqual(cart)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('deduplicates simultaneous sign-out requests while preserving the current account during verification', async () => {
+    const logoutResponse = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockReturnValueOnce(logoutResponse.promise)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    const harness = await mountSession()
+    let first: Promise<void> | undefined
+    let second: Promise<void> | undefined
+    await harness.act(async () => {
+      first = harness.session.signOut()
+      second = harness.session.signOut()
+    })
+    await harness.settle()
+    expect(first).toBe(second)
+    expect(harness.session.isSigningOut).toBe(true)
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.client.getQueryData(['cart'])).toEqual(cart)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await harness.act(async () => {
+      logoutResponse.resolve(new Response(null, { status: 204 }))
+      await first
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('prevents an old session refetch from restoring private data after verified logout', async () => {
+    const oldProbe = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockReturnValueOnce(oldProbe.promise)
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    const harness = await mountSession()
+    await harness.act(async () => {
+      void harness.client.invalidateQueries({ queryKey: ['session'] })
+    })
+    await harness.act(() => harness.session.signOut())
+    await harness.act(async () => {
+      oldProbe.resolve(jsonResponse(cart))
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(false)
+    expect(harness.client.getQueryData(['cart'])).toBeUndefined()
+  })
+
+  it('preserves the generation on revalidation and rotates it when the same user signs in again', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockResolvedValueOnce(jsonResponse(cart))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(jsonResponse(cart))
+    sessionStorage.setItem('quickbite.display-name.v1', 'alex@example.com')
+    sessionStorage.setItem('quickbite.session-generation.v1', 'verified-previous-generation')
+    const harness = await mountSession()
+    expect(harness.session.sessionId).toBe('verified-previous-generation')
+    await harness.act(() => harness.client.invalidateQueries({ queryKey: ['session'] }))
+    await harness.settle()
+    expect(harness.session.sessionId).toBe('verified-previous-generation')
+    await harness.act(() => harness.session.signOut())
+    await harness.act(() =>
+      harness.session.signIn({ username: 'alex@example.com', password: 'password123' }),
+    )
+    await harness.settle()
+    expect(harness.session.sessionId).not.toBe('verified-previous-generation')
+    expect(harness.session.sessionId).toBe(
+      sessionStorage.getItem('quickbite.session-generation.v1'),
+    )
+  })
+})
+
+describe('demo account isolation', () => {
+  it('logs out without deleting saved carts or exposing another account cart', async () => {
+    vi.stubEnv('VITE_DEMO_MODE', 'true')
+    vi.resetModules()
+    const demo = (await import('./api')).api
+    await demo.login({ username: 'first@example.com', password: 'first-password' })
+    await demo.addItemToCart(101)
+    const firstCart = await demo.getCart()
+    await demo.logout()
+    await expect(demo.getCart()).rejects.toMatchObject({ status: 401 })
+    await demo.login({ username: 'second@example.com', password: 'second-password' })
+    await expect(demo.getCart()).resolves.toEqual({ total_price: 0, order_items: [] })
+    await demo.addItemToCart(201)
+    await demo.logout()
+    await demo.login({ username: 'first@example.com', password: 'first-password' })
+    await expect(demo.getCart()).resolves.toEqual(firstCart)
+    expect(sessionStorage.getItem('quickbite.demo.v1')).not.toContain('first-password')
+    expect(sessionStorage.getItem('quickbite.demo.v1')).not.toContain('second-password')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('live cross-tab account boundaries', () => {
+  const sharedRevisionKey = 'quickbite.auth.v1:live:%2Fapi:revision'
+  const seenRevisionKey = 'quickbite.auth.v1:live:%2Fapi:seen-revision'
+  function mockChannel() {
+    const channel = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      postMessage: vi.fn(),
+      close: vi.fn(),
+    }
+    vi.stubGlobal(
+      'BroadcastChannel',
+      vi.fn(function () {
+        return channel
+      }),
+    )
+    return channel
+  }
+
+  it('clears a remote logout without rebroadcasting, and closes its channel on unmount', async () => {
+    const channel = mockChannel()
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        total_price: 10,
+        order_items: [{ menu_item_name: 'Private item', price: 10 }],
+      }),
+    )
+    sessionStorage.setItem('quickbite.display-name.v1', 'previous@example.com')
+    const harness = await mountSession()
+    await harness.act(async () => {
+      channel.onmessage?.(new MessageEvent('message', { data: 'signed-out' }))
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(false)
+    expect(harness.client.getQueryData(['cart'])).toBeUndefined()
+    expect(sessionStorage.getItem('quickbite.display-name.v1')).toBeNull()
+    expect(channel.postMessage).not.toHaveBeenCalled()
+    await disposeSessionHarness?.()
+    disposeSessionHarness = undefined
+    expect(channel.close).toHaveBeenCalledOnce()
+  })
+
+  it('discards the previous display name before verifying a remote sign-in', async () => {
+    const channel = mockChannel()
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          total_price: 10,
+          order_items: [{ menu_item_name: 'Previous item', price: 10 }],
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ total_price: 0, order_items: [] }))
+    sessionStorage.setItem('quickbite.display-name.v1', 'previous@example.com')
+    const harness = await mountSession()
+    const previousId = harness.session.sessionId
+    await harness.act(async () => {
+      channel.onmessage?.(new MessageEvent('message', { data: 'signed-in' }))
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.session.username).toBe('Food lover')
+    expect(harness.session.sessionId).not.toBe(previousId)
+    expect(harness.client.getQueryData(['cart'])).toEqual({ total_price: 0, order_items: [] })
+    expect(channel.postMessage).not.toHaveBeenCalled()
+  })
+
+  it('does not connect tab-local demo sessions to a shared auth channel', async () => {
+    mockChannel()
+    vi.stubEnv('VITE_DEMO_MODE', 'true')
+    vi.resetModules()
+    await mountSession()
+    expect(BroadcastChannel).not.toHaveBeenCalled()
+  })
+
+  it('discards a missed account boundary before restoring a suspended tab identity', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    localStorage.setItem(sharedRevisionKey, 'new-account-revision')
+    sessionStorage.setItem(seenRevisionKey, 'old-account-revision')
+    sessionStorage.setItem('quickbite.display-name.v1', 'old@example.com')
+    sessionStorage.setItem('quickbite.session-generation.v1', 'old-receipt-generation')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ total_price: 0, order_items: [] }))
+    const harness = await mountSession()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.session.username).toBe('Food lover')
+    expect(harness.session.sessionId).not.toBe('old-receipt-generation')
+    expect(sessionStorage.getItem(seenRevisionKey)).toBe('new-account-revision')
+  })
+
+  it('verifies an authenticated new tab after StrictMode cancels its initial revision-change probe', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    localStorage.setItem(sharedRevisionKey, 'another-tab-sign-in')
+    fetchMock.mockImplementation(async () => jsonResponse({ total_price: 0, order_items: [] }))
+    const harness = await mountSession(true)
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(true)
+    expect(harness.session.username).toBe('Food lover')
+    expect(harness.session.sessionId).toBeTruthy()
+    expect(harness.client.getQueryData(['cart'])).toEqual({ total_price: 0, order_items: [] })
+  })
+
+  it('reconciles a resumed tab immediately even when its session query is still fresh', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    const newProbe = deferred<Response>()
+    localStorage.setItem(sharedRevisionKey, 'old-account-revision')
+    sessionStorage.setItem(seenRevisionKey, 'old-account-revision')
+    sessionStorage.setItem('quickbite.display-name.v1', 'old@example.com')
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          total_price: 10,
+          order_items: [{ menu_item_name: 'Old private item', price: 10 }],
+        }),
+      )
+      .mockReturnValueOnce(newProbe.promise)
+    const harness = await mountSession()
+    const previousId = harness.session.sessionId
+    localStorage.setItem(sharedRevisionKey, 'new-account-revision')
+    await harness.act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    await harness.settle()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(harness.session.isAuthenticated).toBe(false)
+    expect(harness.client.getQueryData(['cart'])).toBeUndefined()
+    await harness.act(async () => {
+      newProbe.resolve(jsonResponse({ total_price: 0, order_items: [] }))
+    })
+    await harness.settle()
+    expect(harness.session.username).toBe('Food lover')
+    expect(harness.session.sessionId).not.toBe(previousId)
+    expect(harness.client.getQueryData(['cart'])).toEqual({ total_price: 0, order_items: [] })
+  })
+
+  it('rejects an in-flight cart response when the shared account revision changed', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    const oldProbe = deferred<Response>()
+    localStorage.setItem(sharedRevisionKey, 'old-account-revision')
+    sessionStorage.setItem(seenRevisionKey, 'old-account-revision')
+    fetchMock.mockReturnValueOnce(oldProbe.promise)
+    const harness = await mountSession()
+    localStorage.setItem(sharedRevisionKey, 'new-account-revision')
+    await harness.act(async () => {
+      oldProbe.resolve(
+        jsonResponse({
+          total_price: 10,
+          order_items: [{ menu_item_name: 'Old private item', price: 10 }],
+        }),
+      )
+    })
+    await harness.settle()
+    expect(harness.session.isAuthenticated).toBe(false)
+    expect(harness.session.error).toMatchObject({ status: 409 })
+    expect(harness.client.getQueryData(['cart'])).toBeUndefined()
   })
 })

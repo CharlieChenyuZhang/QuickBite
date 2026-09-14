@@ -17,7 +17,6 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -25,6 +24,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useSession } from '@/lib/session'
+import { AccountMenu } from '@/components/account-menu'
 import { useCart } from '@/lib/queries'
 import { isDemoMode } from '@/lib/api'
 import { useFavorites } from '@/lib/favorites'
@@ -109,8 +109,8 @@ function HelpDialog() {
   )
 }
 export function Layout() {
-  const { isAuthenticated, username } = useSession()
-  const cart = useCart(isAuthenticated)
+  const { isAuthenticated, isSigningOut } = useSession()
+  const cart = useCart(isAuthenticated && !isSigningOut)
   const count = cart.data?.order_items.reduce((sum, item) => sum + (item.quantity ?? 1), 0) ?? 0
   const navigate = useNavigate()
   const location = useLocation()
@@ -206,33 +206,7 @@ export function Layout() {
           <div className="header-actions">
             {isDemoMode && <span className="demo-pill">Demo</span>}
             {isAuthenticated ? (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" className="account-button" aria-label="My account">
-                    <UserRound size={19} />
-                    <span>{username || 'My account'}</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>You’re signed in</DialogTitle>
-                    <DialogDescription>
-                      {username
-                        ? `Ordering as ${username}.`
-                        : 'Your session is active and your cart is ready.'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <p className="text-sm text-muted-foreground">
-                    Your cart stays connected to your account. Browse the menu to find your next
-                    favorite meal.
-                  </p>
-                  <DialogClose asChild>
-                    <Button asChild>
-                      <Link to="/cart">View your cart</Link>
-                    </Button>
-                  </DialogClose>
-                </DialogContent>
-              </Dialog>
+              <AccountMenu />
             ) : (
               <Button asChild variant="ghost" className="account-button">
                 <Link to="/login" aria-label="Sign in">

@@ -2188,3 +2188,11 @@
     scroll-behavior: auto;
   }
 }
+
+/* Keep notification text readable against Sonner's pale status backgrounds. */
+:root [data-sonner-toaster][data-sonner-theme='light'] {
+  --success-text: #166534;
+  --info-text: #1e40af;
+  --warning-text: #854d0e;
+  --error-text: #991b1b;
+}

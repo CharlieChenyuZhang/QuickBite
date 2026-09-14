@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,7 +15,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState } from '@/components/feedback'
-import { useCart, useCheckout } from '@/lib/queries'
+import { queryKeys, useCart, useCheckout } from '@/lib/queries'
 import { useSession } from '@/lib/session'
 import { errorMessage, money } from '@/lib/presentation'
 import { isDemoMode } from '@/lib/api'
@@ -43,24 +44,31 @@ function UtensilIcon() {
 }
 export function CartPage({ checkout = false }: { checkout?: boolean }) {
   const session = useSession()
-  const cart = useCart(session.isAuthenticated)
+  const cart = useCart(session.isAuthenticated && !session.isSigningOut)
   const order = useCheckout()
+  const client = useQueryClient()
   const navigate = useNavigate()
   const submitting = useRef(false)
   const [submitError, setSubmitError] = useState('')
   const [needsReview, setNeedsReview] = useState(false)
   async function placeOrder() {
-    if (!cart.data?.order_items.length || submitting.current || needsReview) return
+    if (!cart.data?.order_items.length || submitting.current || needsReview || session.isSigningOut)
+      return
+    const requestSessionId = session.sessionId
+    const isCurrentSession = () =>
+      client.getQueryData<{ sessionId: string }>(queryKeys.session)?.sessionId === requestSessionId
     submitting.current = true
     setSubmitError('')
     const receipt = structuredClone(cart.data)
     try {
       await order.mutateAsync()
+      if (!isCurrentSession()) return
       navigate('/order-confirmation', {
         replace: true,
-        state: { receipt, placedAt: new Date().toISOString(), username: session.username },
+        state: { receipt, placedAt: new Date().toISOString(), sessionId: requestSessionId },
       })
     } catch (error) {
+      if (!isCurrentSession()) return
       setSubmitError(errorMessage(error))
       setNeedsReview(true)
     } finally {
@@ -195,7 +203,7 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
               <Button
                 size="lg"
                 className="w-full"
-                disabled={order.isPending || cart.isFetching}
+                disabled={order.isPending || cart.isFetching || session.isSigningOut}
                 onClick={() => {
                   void placeOrder()
                 }}
@@ -234,8 +242,8 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
 export function ConfirmationPage() {
   const location = useLocation()
   const session = useSession()
-  const state = location.state as { receipt?: Cart; placedAt?: string; username?: string } | null
-  if (!state?.receipt || state.username !== session.username)
+  const state = location.state as { receipt?: Cart; placedAt?: string; sessionId?: string } | null
+  if (!state?.receipt || !session.sessionId || state.sessionId !== session.sessionId)
     return (
       <div className="page-content">
         <EmptyState

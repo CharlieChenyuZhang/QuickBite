@@ -4,9 +4,9 @@ import AxeBuilder from '@axe-core/playwright'
 const demoEmail = 'hello@quickbite.demo'
 const demoPassword = 'quickbite123'
 
-async function signIn(page: Page, destination = '/') {
+async function signIn(page: Page, destination = '/', email = demoEmail) {
   await page.goto(`/login?redirect=${encodeURIComponent(destination)}`)
-  await page.getByLabel('Email or username').fill(demoEmail)
+  await page.getByLabel('Email or username').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(demoPassword)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL((url) => url.pathname === destination)
@@ -121,6 +121,85 @@ test('signup rejects mismatched passwords before creating an account', async ({ 
   await page.getByRole('button', { name: 'Create account', exact: true }).click()
   await expect(page).toHaveURL(/\/login/)
   await expectNoOverflow(page)
+})
+
+for (const action of ['Log out', 'Switch account']) {
+  test(`${action} ends the session and keeps each account's cart private`, async ({ page }) => {
+    await signIn(page, '/restaurants/1')
+    await addGreenGoddess(page)
+    await page.getByRole('link', { name: 'Your cart, 1 items', exact: true }).click()
+    await expect(page).toHaveURL(/\/cart$/)
+    await page.getByRole('link', { name: 'Checkout', exact: true }).click()
+    await expect(page).toHaveURL(/\/checkout$/)
+    await page.getByRole('button', { name: 'My account', exact: true }).click()
+    await page.getByRole('button', { name: action, exact: true }).click()
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByRole('button', { name: 'My account', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Your cart, 0 items', exact: true })).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
+    await page.goBack()
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fcart$/)
+    await expect(page.getByText('The Green Goddess', { exact: true })).toHaveCount(0)
+    await page.goto('/checkout')
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fcheckout$/)
+
+    await signIn(page, '/cart', 'another@quickbite.demo')
+    await expect(
+      page.getByRole('heading', { name: 'A little empty. A lot of possibilities.', exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText('The Green Goddess', { exact: true })).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByRole('link', { name: 'Your cart, 0 items', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'My account', exact: true }).click()
+    await page.getByRole('button', { name: 'Switch account', exact: true }).click()
+    await expect(page).toHaveURL(/\/login$/)
+    await signIn(page, '/cart')
+    await expect(page.getByText('The Green Goddess', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Your cart, 1 items', exact: true })).toBeVisible()
+  })
+}
+
+test('browser history cannot reveal a previous order confirmation after logout', async ({
+  page,
+}) => {
+  await signIn(page, '/restaurants/1')
+  await addGreenGoddess(page)
+  await page.goto('/checkout')
+  await page.getByRole('button', { name: 'Place order', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Order confirmed!', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Find your next favorite', exact: true }).click()
+  await page.getByRole('button', { name: 'My account', exact: true }).click()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/login\?redirect=%2Forder-confirmation$/)
+  await expect(page.getByRole('heading', { name: 'Order confirmed!', exact: true })).toHaveCount(0)
+  await expect(page.getByText('The Green Goddess', { exact: true })).toHaveCount(0)
+})
+
+test('account dialog is accessible and restores keyboard focus when closed', async ({ page }) => {
+  await signIn(page)
+  const accountButton = page.getByRole('button', { name: 'My account', exact: true })
+  await accountButton.click()
+  await expect(page.getByRole('dialog', { name: 'Your account', exact: true })).toBeVisible()
+  const result = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+    .analyze()
+  expect(
+    result.violations.map(({ id, nodes }) => ({
+      rule: id,
+      elements: nodes.map((node) => ({ selector: node.target, issue: node.failureSummary })),
+    })),
+  ).toEqual([])
+  await page.keyboard.press('Tab')
+  expect(
+    await page.getByRole('dialog').evaluate((dialog) => dialog.contains(document.activeElement)),
+  ).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(accountButton).toBeFocused()
 })
 
 for (const route of ['/', '/login', '/restaurants/1', '/cart']) {

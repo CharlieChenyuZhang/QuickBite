@@ -46,6 +46,7 @@ export interface QuickBiteApi {
   getMenus(restaurantId: number): Promise<MenuItem[]>
   getCart(): Promise<Cart>
   login(credentials: Credentials): Promise<void>
+  logout(): Promise<void>
   signup(input: SignupInput): Promise<void>
   addItemToCart(menuId: number): Promise<void>
   checkout(): Promise<void>

@@ -9,6 +9,17 @@ export const queryKeys = {
   session: ['session'] as const,
 }
 
+const sessionTransitions = new WeakSet<QueryClient>()
+
+function sessionGeneration(client: QueryClient): string | undefined {
+  return client.getQueryData<{ sessionId: string }>(queryKeys.session)?.sessionId
+}
+
+export function setSessionTransition(client: QueryClient, active: boolean): void {
+  if (active) sessionTransitions.add(client)
+  else sessionTransitions.delete(client)
+}
+
 export async function clearPrivateSession(client: QueryClient): Promise<void> {
   const cancellations = [
     client.cancelQueries({ queryKey: queryKeys.session }),
@@ -21,7 +32,7 @@ export async function clearPrivateSession(client: QueryClient): Promise<void> {
 }
 
 export function expireSession(client: QueryClient, error: unknown): void {
-  if (error instanceof ApiError && error.status === 401) {
+  if (!sessionTransitions.has(client) && error instanceof ApiError && error.status === 401) {
     void clearPrivateSession(client)
   }
 }
@@ -66,12 +77,20 @@ export function useCart(enabled = true) {
 export function useAddToCart() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: api.addItemToCart,
+    mutationFn: (menuId: number) => {
+      if (sessionTransitions.has(client))
+        throw new ApiError('Please wait until your account change is complete.', 409)
+      return api.addItemToCart(menuId)
+    },
     retry: false,
-    onMutate: () => ({ session: client.getQueryData(queryKeys.session) }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.cart }),
+    onMutate: () => ({ sessionId: sessionGeneration(client) }),
+    onSuccess: (_data, _variables, context) => {
+      if (!sessionTransitions.has(client) && context?.sessionId === sessionGeneration(client)) {
+        return client.invalidateQueries({ queryKey: queryKeys.cart })
+      }
+    },
     onError: (error, _variables, context) => {
-      if (context?.session === client.getQueryData(queryKeys.session)) expireSession(client, error)
+      if (context?.sessionId === sessionGeneration(client)) expireSession(client, error)
     },
   })
 }
@@ -79,12 +98,20 @@ export function useAddToCart() {
 export function useCheckout() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: api.checkout,
+    mutationFn: () => {
+      if (sessionTransitions.has(client))
+        throw new ApiError('Please wait until your account change is complete.', 409)
+      return api.checkout()
+    },
     retry: false,
-    onMutate: () => ({ session: client.getQueryData(queryKeys.session) }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.cart }),
+    onMutate: () => ({ sessionId: sessionGeneration(client) }),
+    onSuccess: (_data, _variables, context) => {
+      if (!sessionTransitions.has(client) && context?.sessionId === sessionGeneration(client)) {
+        return client.invalidateQueries({ queryKey: queryKeys.cart })
+      }
+    },
     onError: (error, _variables, context) => {
-      if (context?.session === client.getQueryData(queryKeys.session)) expireSession(client, error)
+      if (context?.sessionId === sessionGeneration(client)) expireSession(client, error)
     },
   })
 }

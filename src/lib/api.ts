@@ -4,6 +4,7 @@ import type { Cart, MenuItem, QuickBiteApi, Restaurant } from './types'
 export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
+const logoutPath = import.meta.env.VITE_LOGOUT_PATH || '/logout'
 
 export class ApiError extends Error {
   constructor(
@@ -29,12 +30,13 @@ function csrfToken(): string | undefined {
   }
 }
 
-function statusError(status: number, fallback: string): ApiError {
+function statusError(status: number, fallback: string, endpoint: string): ApiError {
   if (status === 401) return new ApiError('Please sign in to continue.', status)
   if (status === 403) {
     return new ApiError('This request was not authorized. Please refresh and try again.', status)
   }
-  if (status === 409) return new ApiError('An account with this email already exists.', status)
+  if (status === 409 && endpoint === '/signup')
+    return new ApiError('An account with this email already exists.', status)
   if (status === 429)
     return new ApiError('Too many attempts. Please wait a moment and try again.', status)
   return new ApiError(fallback, status)
@@ -45,9 +47,10 @@ async function request<T>(
   options: RequestInit = {},
   expectsJson = true,
   fallback = 'Something went wrong. Please try again.',
+  allowLogoutRedirect = false,
 ): Promise<T> {
   const headers = new Headers(options.headers)
-  headers.set('Accept', 'application/json')
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json')
   if (options.method && options.method !== 'GET') {
     const token = csrfToken()
     if (token) headers.set('X-XSRF-TOKEN', token)
@@ -59,6 +62,7 @@ async function request<T>(
       ...options,
       headers,
       credentials: 'include',
+      signal: options.signal ?? AbortSignal.timeout(15_000),
     })
   } catch {
     throw new ApiError('Unable to connect to QuickBite. Check your connection and try again.', 0)
@@ -66,7 +70,12 @@ async function request<T>(
 
   // Spring Security can redirect failed authentication to a 200 HTML login page.
   const isLoginRedirect = response.redirected && /\/login(?:[/?#]|$)/.test(response.url)
-  if (isLoginRedirect) {
+  const isSuccessfulLogoutRedirect =
+    allowLogoutRedirect &&
+    isLoginRedirect &&
+    new URL(response.url).searchParams.has('logout') &&
+    !new URL(response.url).searchParams.has('error')
+  if (isLoginRedirect && !isSuccessfulLogoutRedirect) {
     throw new ApiError(
       endpoint === '/login' ? 'The email or password is incorrect.' : 'Please sign in to continue.',
       401,
@@ -76,7 +85,7 @@ async function request<T>(
     if (endpoint === '/login' && (response.status === 400 || response.status === 401)) {
       throw new ApiError('The email or password is incorrect.', response.status)
     }
-    throw statusError(response.status, fallback)
+    throw statusError(response.status, fallback, endpoint)
   }
   if (!expectsJson) return undefined as T
 
@@ -109,7 +118,13 @@ const liveApi: QuickBiteApi = {
       true,
       'We could not load this menu. Please try again.',
     ),
-  getCart: () => request<Cart>('/cart', {}, true, 'We could not load your cart. Please try again.'),
+  getCart: () =>
+    request<Cart>(
+      '/cart',
+      { cache: 'no-store' },
+      true,
+      'We could not load your cart. Please try again.',
+    ),
   login: (credentials) =>
     request<void>(
       '/login',
@@ -124,6 +139,23 @@ const liveApi: QuickBiteApi = {
       false,
       'We could not sign you in. Please check your details and try again.',
     ),
+  logout: () => {
+    if (!logoutPath.startsWith('/') || logoutPath.startsWith('//') || /[\\?#\s]/.test(logoutPath)) {
+      return Promise.reject(
+        new ApiError(
+          'The logout endpoint is not configured correctly. Please contact support.',
+          500,
+        ),
+      )
+    }
+    return request<void>(
+      logoutPath,
+      { method: 'POST', headers: { Accept: 'text/html, application/json' } },
+      false,
+      'We could not sign you out. Please try again.',
+      true,
+    )
+  },
   signup: (input) =>
     request<void>(
       '/signup',

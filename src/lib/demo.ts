@@ -335,12 +335,15 @@ function copy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-export function forgetDemoSession(): void {
+function forgetDemoSession(): void {
   const state = readState()
   saveState({ ...state, username: null })
 }
 
 export const demoApi: QuickBiteApi = {
+  async logout() {
+    forgetDemoSession()
+  },
   async getRestaurants() {
     return copy(demoRestaurants)
   },

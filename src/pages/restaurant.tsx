@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FoodImage } from '@/components/food-image'
 import { CardsSkeleton, EmptyState, ErrorState } from '@/components/feedback'
-import { useAddToCart, useCart, useMenus, useRestaurants } from '@/lib/queries'
+import { queryKeys, useAddToCart, useCart, useMenus, useRestaurants } from '@/lib/queries'
 import { useSession } from '@/lib/session'
 import { useFavorites } from '@/lib/favorites'
 import { errorMessage, money, restaurantPresentation } from '@/lib/presentation'
@@ -29,14 +30,19 @@ export function RestaurantPage() {
   const menu = useMenus(restaurantId)
   const restaurant = restaurants.data?.find((item) => item.id === restaurantId)
   const { ids, toggle } = useFavorites()
-  const { isAuthenticated } = useSession()
-  const cart = useCart(isAuthenticated)
+  const { isAuthenticated, isSigningOut, sessionId } = useSession()
+  const client = useQueryClient()
+  const cart = useCart(isAuthenticated && !isSigningOut)
   const add = useAddToCart()
   const [search, setSearch] = useState('')
   const [addingId, setAddingId] = useState<number | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   async function addItem(item: MenuItem) {
+    if (isSigningOut) return
+    const requestSessionId = sessionId
+    const isCurrentSession = () =>
+      client.getQueryData<{ sessionId: string }>(queryKeys.session)?.sessionId === requestSessionId
     if (!isAuthenticated) {
       navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`)
       return
@@ -44,10 +50,17 @@ export function RestaurantPage() {
     setAddingId(item.id)
     try {
       await add.mutateAsync(item.id)
+      if (!isCurrentSession()) return
       toast.success(`${item.name} added to your cart`, {
         action: { label: 'View cart', onClick: () => navigate('/cart') },
       })
     } catch (error) {
+      const activeSession = client.getQueryData(queryKeys.session)
+      if (
+        !isCurrentSession() &&
+        !(error instanceof ApiError && error.status === 401 && activeSession === null)
+      )
+        return
       toast.error(errorMessage(error))
       if (error instanceof ApiError && error.status === 401)
         navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`)
@@ -175,7 +188,7 @@ export function RestaurantPage() {
                     size="icon"
                     className="add-button"
                     aria-label={`Add ${item.name} to cart`}
-                    disabled={add.isPending}
+                    disabled={add.isPending || isSigningOut}
                     onClick={() => {
                       void addItem(item)
                     }}
