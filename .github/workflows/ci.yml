@@ -26,6 +26,8 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm test
+      - run: npm run test:integration-tools
+      - run: python3 scripts/deploy-aws.test.py
       - run: npm run build
       - name: Build production container
         run: docker build -t quickbite-frontend:ci .

@@ -1,0 +1,99 @@
+name: Deploy frontend to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only check or deploy the configured frontend
+        type: choice
+        options: [check, apply]
+        default: check
+      target:
+        description: Update the verified frontend ARN or create a new frontend
+        type: choice
+        options: [existing, create]
+        default: existing
+      image_tag:
+        description: Immutable image tag (empty uses this commit SHA)
+        type: string
+      reuse_image:
+        description: Reuse an existing image for a retry or rollback
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: quickbite-frontend-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      APP_RUNNER_SERVICE_NAME: ${{ vars.APP_RUNNER_SERVICE_NAME }}
+      APP_RUNNER_SERVICE_ARN: ${{ vars.APP_RUNNER_SERVICE_ARN }}
+      AWS_BOOTSTRAP_STACK: ${{ vars.AWS_BOOTSTRAP_STACK }}
+      BACKEND_ORIGIN: ${{ vars.BACKEND_ORIGIN }}
+      VITE_LOGOUT_PATH: ${{ vars.VITE_LOGOUT_PATH }}
+      DEPLOY_MODE: ${{ inputs.mode }}
+      DEPLOY_TARGET: ${{ inputs.target }}
+      DEPLOY_IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      DEPLOY_REUSE_IMAGE: ${{ inputs.reuse_image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate deployment variables
+        run: |
+          python3 - <<'PY'
+          import os
+          required = ['AWS_ACCOUNT_ID', 'AWS_REGION', 'AWS_DEPLOY_ROLE_ARN', 'ECR_REPOSITORY', 'APP_RUNNER_SERVICE_NAME', 'BACKEND_ORIGIN']
+          required += ['APP_RUNNER_SERVICE_ARN'] if os.environ['DEPLOY_TARGET'] == 'existing' else ['AWS_BOOTSTRAP_STACK']
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Set repository variables: ' + ', '.join(missing))
+          PY
+      - run: python3 scripts/deploy-aws.test.py
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:integration-tools
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: quickbite-frontend-deploy
+      - name: Run the shared frontend deployment script
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          args = ['python3', 'scripts/deploy-aws.py', '--' + os.environ['DEPLOY_MODE']]
+          for key, variable in [('account-id', 'AWS_ACCOUNT_ID'), ('region', 'AWS_REGION'), ('service-name', 'APP_RUNNER_SERVICE_NAME'), ('repository', 'ECR_REPOSITORY'), ('image-tag', 'DEPLOY_IMAGE_TAG'), ('backend-origin', 'BACKEND_ORIGIN')]:
+              args += ['--' + key, os.environ[variable]]
+          if os.environ['DEPLOY_TARGET'] == 'existing':
+              args += ['--service-arn', os.environ['APP_RUNNER_SERVICE_ARN']]
+          else:
+              args += ['--create-service', '--bootstrap-stack', os.environ['AWS_BOOTSTRAP_STACK']]
+          if os.environ.get('VITE_LOGOUT_PATH'):
+              args += ['--logout-path', os.environ['VITE_LOGOUT_PATH']]
+          if os.environ['DEPLOY_REUSE_IMAGE'] == 'true':
+              args += ['--reuse-image']
+          subprocess.run(args, check=True)
+          PY

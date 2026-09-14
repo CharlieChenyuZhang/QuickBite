@@ -1,6 +1,6 @@
 # QuickBite
 
-A responsive food ordering frontend built with React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS, and shadcn/ui. Browse restaurants and menus, search for a meal, create an account, sign in, review your cart, place an order, and log out or switch accounts.
+A responsive food ordering frontend built with React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS, and shadcn/ui. Browse restaurants and menus, search for a meal, create an account, sign in, review your cart, place an order, and log out or switch accounts. UI primitives are installed from the official shadcn registry and customized locally; see their [source and customization notes](src/components/ui/README.md).
 
 This repository contains the frontend. It integrates with the existing Java and Spring Boot REST API secured by Spring Security, with Spring Data JDBC and PostgreSQL / AWS RDS on the backend. The backend API and database are unchanged by this migration.
 
@@ -10,7 +10,7 @@ The interface puts search, cuisine filters, and restaurant listings first. A sin
 
 [Desktop preview](docs/screenshots/quickbite-desktop.png) · [Mobile preview](docs/screenshots/quickbite-mobile.png)
 
-Screenshots show the explicitly labeled demo. Sample photography loads from Unsplash and typography from Google Fonts, with local font and image fallbacks when those services are unavailable. Live menus and prices come from the existing API.
+Screenshots use demo data. Sample photography loads from Unsplash and typography from Google Fonts, with local font and image fallbacks when those services are unavailable. Live menus and prices come from the existing API.
 
 ## Run locally
 
@@ -37,6 +37,8 @@ npm run dev:demo
 
 Demo mode uses sample restaurants and a simulated account, cart, and checkout. It is explicitly enabled by `VITE_DEMO_MODE=true` and never activates as a fallback for a failed API request. Demo orders are not sent to the backend.
 
+For real backend setup and read-only connectivity checks, see [Live backend integration](docs/live-backend.md). The frontend repository does not contain the Java service or its PostgreSQL configuration. Supply the existing service address instead of pointing the frontend directly at RDS.
+
 ## Configuration
 
 | Variable            | When applied            | Default                            | Purpose                                                                                |
@@ -44,7 +46,7 @@ Demo mode uses sample restaurants and a simulated account, cart, and checkout. I
 | `API_PROXY_TARGET`  | Vite development server | `http://localhost:8080`            | Backend origin for the local `/api` proxy.                                             |
 | `VITE_API_BASE_URL` | Frontend build          | `/api`                             | Request prefix. Prefer the same-origin proxy for cookie authentication.                |
 | `VITE_LOGOUT_PATH`  | Frontend build          | `/logout`                          | Existing backend logout path, relative to the API base, starting with `/`.             |
-| `VITE_DEMO_MODE`    | Frontend build          | `false`                            | Enables the explicitly labeled local demo when set to `true`.                          |
+| `VITE_DEMO_MODE`    | Frontend build          | `false`                            | Enables sample data and simulated authentication when set to `true`.                   |
 | `BACKEND_ORIGIN`    | Container startup       | `http://host.docker.internal:8080` | Backend origin for the production Nginx proxy. Use an origin without a trailing slash. |
 
 Vite exposes `VITE_*` values to the browser bundle. Do not put credentials or secrets in these variables. Changing them requires a rebuild. `BACKEND_ORIGIN` is a server-side runtime setting and does not require rebuilding the frontend.
@@ -82,6 +84,8 @@ For a cross-origin `VITE_API_BASE_URL`, the existing backend must already suppor
 npm run format:check
 npm run lint
 npm test
+npm run test:integration-tools
+python3 scripts/deploy-aws.test.py
 npm run build
 npx playwright install chromium
 npm run test:e2e
@@ -116,6 +120,6 @@ To deploy this frontend using the requested AWS stack:
 4. Set the runtime environment variable `BACKEND_ORIGIN` to the existing, reachable Spring Boot service origin, for example `https://your-backend.awsapprunner.com`. Keep `VITE_API_BASE_URL` at `/api` for the provided proxy.
 5. Verify the live user flow over HTTPS, including the session cookie on sign-in and refresh. The frontend health endpoint checks the web server only, so check the backend separately.
 
-The frontend does not connect directly to PostgreSQL or RDS. Database credentials belong in the existing backend configuration. Deployment files and instructions are provided here; this repository does not assert that an AWS deployment has been performed or validated.
+The frontend does not connect directly to PostgreSQL or RDS. Database credentials belong in the existing backend configuration. The [AWS deployment guide](docs/aws-deployment.md) includes an executable deployment script and a manual GitHub Actions workflow for ECR and App Runner. These support explicit environment selection and preflight checks; no live deployment is implied by their presence.
 
 References: [Nginx container configuration](https://hub.docker.com/_/nginx), [Nginx proxy URI handling](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass), and [App Runner services from ECR images](https://docs.aws.amazon.com/apprunner/latest/dg/service-source-image.html).

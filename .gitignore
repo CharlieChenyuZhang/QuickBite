@@ -28,3 +28,7 @@ yarn-error.log*
 /playwright-report
 /test-results
 .env
+
+# Local deployment-tool checks
+__pycache__/
+*.pyc
