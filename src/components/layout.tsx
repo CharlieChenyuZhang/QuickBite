@@ -1,19 +1,6 @@
-import {
-  ArrowUpRight,
-  ChevronRight,
-  CircleHelp,
-  Compass,
-  Heart,
-  Leaf,
-  Menu,
-  Search,
-  ShoppingBag,
-  Sparkles,
-  UserRound,
-  UtensilsCrossed,
-} from 'lucide-react'
+import { CircleHelp, Heart, Search, ShoppingBag, UserRound, UtensilsCrossed, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -33,67 +20,57 @@ import { cn } from '@/lib/utils'
 export function Brand() {
   return (
     <Link to="/" className="brand" aria-label="QuickBite home">
-      <span className="brand-icon">
-        <UtensilsCrossed size={23} />
-      </span>
-      <span>
-        Quick<span className="text-primary">Bite</span>
-        <span className="brand-dot">.</span>
-      </span>
+      <UtensilsCrossed size={23} aria-hidden="true" />
+      <span>QuickBite</span>
     </Link>
   )
 }
-const navigation = [
-  { to: '/', label: 'Discover', icon: Compass },
-  { to: '/saved', label: 'Saved places', icon: Heart },
-  { to: '/cart', label: 'Your cart', icon: ShoppingBag },
-]
-function Navigation({ onNavigate }: { onNavigate?: () => void }) {
+
+function Navigation() {
   const { ids } = useFavorites()
   return (
     <nav aria-label="Main navigation" className="main-nav">
-      {navigation.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end
-          onClick={onNavigate}
-          className={({ isActive }) => cn('nav-item', isActive && 'active')}
-        >
-          <Icon size={20} />
-          <span>{label}</span>
-          {to === '/saved' && ids.length > 0 && <span className="nav-count">{ids.length}</span>}
-        </NavLink>
-      ))}
+      <NavLink to="/" end className={({ isActive }) => cn('nav-item', isActive && 'active')}>
+        Restaurants
+      </NavLink>
+      <NavLink to="/saved" className={({ isActive }) => cn('nav-item', isActive && 'active')}>
+        <Heart size={17} aria-hidden="true" /> Saved
+        {ids.length > 0 && (
+          <span className="nav-count" aria-label={ids.length + ' saved restaurants'}>
+            {ids.length}
+          </span>
+        )}
+      </NavLink>
     </nav>
   )
 }
+
 function HelpDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
         <button className="help-button">
-          <CircleHelp size={19} /> How it works <ArrowUpRight size={15} />
+          <CircleHelp size={16} /> How it works
         </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>A good meal is a few clicks away</DialogTitle>
-          <DialogDescription>Here’s how to order with QuickBite.</DialogDescription>
+          <DialogTitle>How to order</DialogTitle>
+          <DialogDescription>Three steps to your next meal.</DialogDescription>
         </DialogHeader>
         <ol className="how-it-works">
           <li>
             <span>1</span>
             <div>
-              <h3>Find your flavor</h3>
-              <p>Browse restaurants or search for a dish. Save places you’d like to try.</p>
+              <h3>Choose a restaurant</h3>
+              <p>Browse by cuisine or search for a restaurant or dish. Save places for later.</p>
             </div>
           </li>
           <li>
             <span>2</span>
             <div>
-              <h3>Make it a meal</h3>
-              <p>Sign in and add your favorites to your cart. Each tap adds one serving.</p>
+              <h3>Add your items</h3>
+              <p>Sign in and choose from the menu. Each tap adds one serving to your cart.</p>
             </div>
           </li>
           <li>
@@ -108,6 +85,7 @@ function HelpDialog() {
     </Dialog>
   )
 }
+
 export function Layout() {
   const { isAuthenticated, isSigningOut } = useSession()
   const cart = useCart(isAuthenticated && !isSigningOut)
@@ -115,92 +93,62 @@ export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
+  const searchInput = useRef<HTMLInputElement>(null)
   const searchQuery = new URLSearchParams(location.search).get('q') || ''
   useEffect(() => {
     setSearch(searchQuery)
     window.scrollTo({ top: 0, behavior: 'instant' })
     const title =
       location.pathname === '/'
-        ? 'Discover'
+        ? 'Restaurants'
         : location.pathname.startsWith('/restaurants/')
           ? 'Menu'
           : location.pathname.slice(1).replaceAll('-', ' ')
-    document.title = `${title.charAt(0).toUpperCase() + title.slice(1)} | QuickBite`
+    document.title = title.charAt(0).toUpperCase() + title.slice(1) + ' | QuickBite'
   }, [location.pathname, searchQuery])
+
+  function clearSearch() {
+    setSearch('')
+    searchInput.current?.focus()
+    if (searchQuery) {
+      const params = new URLSearchParams(location.search)
+      params.delete('q')
+      navigate(location.pathname + (params.size ? '?' + params : ''), { replace: true })
+    }
+  }
+
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <aside className="desktop-sidebar">
-        <Brand />
-        <p className="sidebar-eyebrow">YOUR DAILY DOSE OF DELICIOUS</p>
-        <Navigation />
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="note-art">
-              <Leaf size={31} />
-              <Sparkles size={17} />
-            </span>
-            <h3>
-              Good food.
-              <br />
-              Better days.
-            </h3>
-            <p>
-              A little something delicious
-              <br />
-              is always a good idea.
-            </p>
-            <Link to="/?category=Healthy">
-              Find your fresh favorites <ArrowUpRight size={14} />
-            </Link>
-          </div>
-          <HelpDialog />
-          <div className="sidebar-copyright">© {new Date().getFullYear()} QuickBite</div>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="mobile-brand">
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open navigation">
-                  <Menu size={21} />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="mobile-menu">
-                <DialogHeader>
-                  <DialogTitle>QuickBite</DialogTitle>
-                  <DialogDescription>Find your next favorite bite.</DialogDescription>
-                </DialogHeader>
-                <Navigation onNavigate={() => setOpen(false)} />
-                <HelpDialog />
-              </DialogContent>
-            </Dialog>
-            <Brand />
-          </div>
-          <div className="desktop-greeting">
-            <span className="greeting-dot" /> A good day for good food
-          </div>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <Brand />
+          <Navigation />
           <form
             className="header-search"
             role="search"
             onSubmit={(event) => {
               event.preventDefault()
-              navigate(search.trim() ? `/?q=${encodeURIComponent(search.trim())}` : '/')
+              navigate(search.trim() ? '/?q=' + encodeURIComponent(search.trim()) : '/')
             }}
           >
-            <Search size={18} />
             <input
+              ref={searchInput}
+              type="search"
               aria-label="Search restaurants or dishes"
               placeholder="Search restaurants or dishes"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
+            {search && (
+              <button type="button" aria-label="Clear search" onClick={clearSearch}>
+                <X size={17} />
+              </button>
+            )}
             <button type="submit" aria-label="Submit search">
-              <ChevronRight size={16} />
+              <Search size={19} />
             </button>
           </form>
           <div className="header-actions">
@@ -216,24 +164,22 @@ export function Layout() {
               </Button>
             )}
             <Button asChild className="header-cart">
-              <Link to="/cart" aria-label={`Your cart, ${count} items`}>
+              <Link to="/cart" aria-label={'Your cart, ' + count + ' items'}>
                 <ShoppingBag size={18} />
                 <span className="cart-label">Cart</span>
                 <span className="cart-count">{count}</span>
               </Link>
             </Button>
           </div>
-        </header>
-        <main id="main-content" tabIndex={-1}>
-          <Outlet />
-        </main>
-        <footer className="page-footer">
-          <span>Good food. Good mood.</span>
-          <span>
-            Made with care, served with QuickBite <Leaf size={13} />
-          </span>
-        </footer>
-      </div>
+        </div>
+      </header>
+      <main id="main-content" tabIndex={-1}>
+        <Outlet />
+      </main>
+      <footer className="page-footer">
+        <span>© {new Date().getFullYear()} QuickBite</span>
+        <HelpDialog />
+      </footer>
     </div>
   )
 }

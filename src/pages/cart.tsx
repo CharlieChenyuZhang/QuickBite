@@ -1,16 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  ClipboardList,
-  Leaf,
-  LoaderCircle,
-  ShieldCheck,
-  ShoppingBag,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, LoaderCircle } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -26,21 +16,17 @@ function CartLines({ cart, compact = false }: { cart: Cart; compact?: boolean })
     <ul className={compact ? 'cart-lines compact' : 'cart-lines'}>
       {cart.order_items.map((item, index) => (
         <li key={item.id ?? `${item.menu_item_name}-${index}`}>
-          <span className="cart-item-icon">
-            <UtensilIcon />
+          <span className="cart-item-quantity" aria-label={`Quantity ${item.quantity ?? 1}`}>
+            {item.quantity ?? 1}
           </span>
           <div>
             <h3>{item.menu_item_name}</h3>
-            <p>{item.quantity && item.quantity > 1 ? `${item.quantity} servings` : '1 serving'}</p>
           </div>
           <strong>{money(item.price)}</strong>
         </li>
       ))}
     </ul>
   )
-}
-function UtensilIcon() {
-  return <ShoppingBag size={22} strokeWidth={1.5} />
 }
 export function CartPage({ checkout = false }: { checkout?: boolean }) {
   const session = useSession()
@@ -98,18 +84,17 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
       <div className="page-content">
         <div className="page-intro">
           <div>
-            <p className="eyebrow">ROOM FOR SOMETHING DELICIOUS</p>
-            <h1>Your cart</h1>
+            <h1>{checkout ? 'Checkout' : 'Your cart'}</h1>
           </div>
         </div>
         <EmptyState
           cart
-          title="A little empty. A lot of possibilities."
-          description="Find something you love and add it to your cart. Your next great meal starts here."
+          title="Your cart is empty"
+          description="Browse a restaurant menu and add items to get started."
           action={
             <Button asChild size="lg">
               <Link to="/">
-                Find my next bite <ArrowRight size={17} />
+                Browse restaurants <ArrowRight size={17} />
               </Link>
             </Button>
           }
@@ -122,54 +107,29 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
     <div className="page-content cart-page">
       <Link to={checkout ? '/cart' : '/'} className="back-link">
         <ArrowLeft size={16} />
-        {checkout ? 'Back to your cart' : 'Keep exploring'}
+        {checkout ? 'Back to your cart' : 'Browse restaurants'}
       </Link>
       <div className="page-intro">
         <div>
-          <p className="eyebrow">
-            {checkout ? 'THE GOOD PART IS ALMOST HERE' : 'YOU HAVE EXCELLENT TASTE'}
-          </p>
-          <h1>{checkout ? 'One last look.' : 'Your next great meal.'}</h1>
-          <p>
-            {checkout
-              ? 'Review your meal and confirm your order.'
-              : `${count} ${count === 1 ? 'delicious choice' : 'delicious choices'}, all in one place.`}
-          </p>
-        </div>
-        <div className="checkout-steps">
-          <span className="active">{checkout ? <Check size={14} /> : '1'}</span> Cart <i />
-          <span className={checkout ? 'active' : ''}>2</span> Checkout
+          <h1>{checkout ? 'Checkout' : 'Your cart'}</h1>
+          {checkout && <p>Review your items before placing the order.</p>}
         </div>
       </div>
       <div className="checkout-layout">
         <section className="cart-panel">
           <div className="cart-panel-heading">
-            <h2>
-              <ShoppingBag size={20} />
-              {checkout ? 'Your order' : 'In your bag'}
-            </h2>
-            <span>{count} items</span>
+            <h2>{checkout ? 'Order details' : 'Items'}</h2>
+            <span>
+              {count} {count === 1 ? 'item' : 'items'}
+            </span>
           </div>
           <CartLines cart={data} />
-          <div className="cart-notice">
-            <Leaf size={16} />
-            <p>
-              Every good meal starts with a little care. Check your selections before placing your
-              order.
-            </p>
-          </div>
           <p className="cart-support-note">
-            Items can be added from the menu. To change an item already in your cart, please contact
-            the restaurant.
+            To change an item already in your cart, contact the restaurant.
           </p>
         </section>
         <aside className="order-summary">
-          <p className="eyebrow">THE DELICIOUS DETAILS</p>
           <h2>Order summary</h2>
-          <div className="summary-line">
-            <span>Items</span>
-            <span>{count}</span>
-          </div>
           <div className="summary-total">
             <span>Total</span>
             <strong>{money(data.total_price)}</strong>
@@ -208,11 +168,7 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
                   void placeOrder()
                 }}
               >
-                {order.isPending ? (
-                  <LoaderCircle className="animate-spin" size={17} />
-                ) : (
-                  <CheckCircle2 size={17} />
-                )}{' '}
+                {order.isPending && <LoaderCircle className="animate-spin" size={17} />}{' '}
                 {order.isPending ? 'Placing your order…' : 'Place order'}
               </Button>
             )
@@ -223,10 +179,6 @@ export function CartPage({ checkout = false }: { checkout?: boolean }) {
               </Link>
             </Button>
           )}
-          <p className="summary-security">
-            <ShieldCheck size={15} />{' '}
-            {checkout ? 'Confirm only when you’re ready' : 'A few clicks from a good meal'}
-          </p>
           {checkout && (
             <p className="checkout-disclosure">
               {isDemoMode
@@ -247,11 +199,11 @@ export function ConfirmationPage() {
     return (
       <div className="page-content">
         <EmptyState
-          title="Your next good meal is waiting"
-          description="Place an order and your confirmation will appear here."
+          title="Order confirmation unavailable"
+          description="Place an order to view its confirmation."
           action={
             <Button asChild>
-              <Link to="/">Explore restaurants</Link>
+              <Link to="/">Browse restaurants</Link>
             </Button>
           }
         />
@@ -260,19 +212,16 @@ export function ConfirmationPage() {
   return (
     <div className="page-content confirmation-page">
       <div className="confirmation-mark">
-        <Check size={37} />
+        <Check size={24} />
       </div>
-      <p className="eyebrow">GOOD CHOICE. GREAT TASTE.</p>
       <h1>Order confirmed!</h1>
-      <p>Your order has been submitted successfully. Thanks for choosing QuickBite.</p>
+      <p>Your order has been submitted.</p>
       {isDemoMode && (
         <p className="confirmation-demo">Demo order only. No real purchase or delivery.</p>
       )}
       <section className="receipt">
         <div className="cart-panel-heading">
-          <h2>
-            <ClipboardList size={20} /> Your meal, at a glance
-          </h2>
+          <h2>Order details</h2>
         </div>
         <CartLines cart={state.receipt} compact />
         <div className="summary-total">
@@ -289,12 +238,9 @@ export function ConfirmationPage() {
       </section>
       <Button asChild size="lg">
         <Link to="/">
-          Find your next favorite <ArrowRight size={17} />
+          Browse restaurants <ArrowRight size={17} />
         </Link>
       </Button>
-      <p className="confirmation-footer">
-        Thanks for bringing your appetite. <Leaf size={14} />
-      </p>
     </div>
   )
 }

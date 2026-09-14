@@ -6,7 +6,7 @@ This repository contains the frontend. It integrates with the existing Java and 
 
 ## Interface preview
 
-The redesigned interface uses a warm neutral palette, food photography, reusable accessible controls, and layouts for desktop and mobile.
+The interface puts search, cuisine filters, and restaurant listings first. A single top navigation replaces the sidebar; compact menu rows, a focused checkout summary, and single-column account forms keep the ordering flow straightforward on desktop and mobile. Food photography and a restrained green accent provide visual identity without promotional panels. See the [layout reference notes](docs/layout-references.md) for the public ordering sites that informed the structure.
 
 [Desktop preview](docs/screenshots/quickbite-desktop.png) · [Mobile preview](docs/screenshots/quickbite-mobile.png)
 

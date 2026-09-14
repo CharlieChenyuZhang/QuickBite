@@ -26,6 +26,64 @@ async function expectNoOverflow(page: Page) {
   expect(widths.content).toBeLessThanOrEqual(widths.viewport)
 }
 
+async function expectKeyboardSkipLinkToClearHeader(page: Page) {
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
+  )
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Skip to content', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL((url) => url.hash === '#main-content')
+  await expect(page.getByRole('main')).toBeFocused()
+  await expect
+    .poll(async () => {
+      const heading = await page.locator('main h1').boundingBox()
+      const header = await page.getByRole('banner').boundingBox()
+      return heading && header ? heading.y - (header.y + header.height) : -1
+    })
+    .toBeGreaterThanOrEqual(0)
+}
+
+test('restaurants are visible immediately and primary navigation works without a menu drawer', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const navigation = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+  const restaurantsLink = navigation.getByRole('link', { name: 'Restaurants', exact: true })
+  const savedLink = navigation.getByRole('link', { name: 'Saved', exact: true })
+  await expect(restaurantsLink).toBeInViewport({ ratio: 1 })
+  await expect(savedLink).toBeInViewport({ ratio: 1 })
+  await expect(restaurantsLink).toHaveAttribute('aria-current', 'page')
+  const firstRestaurant = page.getByRole('article').filter({
+    has: page.getByRole('heading', { name: 'Green & Grain', exact: true }),
+  })
+  await expect(firstRestaurant).toBeInViewport({ ratio: 1 })
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+  await expectKeyboardSkipLinkToClearHeader(page)
+
+  await savedLink.click()
+  await expect(page).toHaveURL((url) => url.pathname === '/saved')
+  await expect(savedLink).toHaveAttribute('aria-current', 'page')
+  await expect(restaurantsLink).not.toHaveAttribute('aria-current', 'page')
+  await restaurantsLink.click()
+  await expect(page).toHaveURL((url) => url.pathname === '/')
+  await expect(restaurantsLink).toHaveAttribute('aria-current', 'page')
+  await page.getByRole('link', { name: 'Green & Grain', exact: true }).click()
+  await expect(page).toHaveURL(/\/restaurants\/1$/)
+  await expect(page.getByRole('heading', { name: 'Menu', exact: true })).toBeVisible()
+  await restaurantsLink.click()
+  await expect(firstRestaurant).toBeInViewport({ ratio: 1 })
+  await expectNoOverflow(page)
+  if (page.viewportSize()?.width === 390) {
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto('/')
+    await expectKeyboardSkipLinkToClearHeader(page)
+    await expectNoOverflow(page)
+  }
+})
+
 test('discovery supports search, category filters, and browser navigation', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Green & Grain', exact: true })).toBeVisible()
@@ -42,6 +100,50 @@ test('discovery supports search, category filters, and browser navigation', asyn
   await expect(page.getByRole('heading', { name: 'Green & Grain', exact: true })).toHaveCount(0)
   await page.goBack()
   await expect(page.getByRole('heading', { name: 'Green & Grain', exact: true })).toBeVisible()
+  await expectNoOverflow(page)
+})
+
+test('clear search preserves cuisine and clear filters restores the full restaurant list', async ({
+  page,
+}) => {
+  await page.goto('/?q=pizzeria&category=Pizza')
+  await expect(page.getByRole('heading', { name: 'Pizzeria Uno', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Green & Grain', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click()
+  await expect(page).toHaveURL(
+    (url) => !url.searchParams.has('q') && url.searchParams.get('category') === 'Pizza',
+  )
+  await expect(page.getByLabel('Search restaurants or dishes')).toHaveValue('')
+  await expect(page.getByLabel('Search restaurants or dishes')).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Pizza', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('heading', { name: 'Pizzeria Uno', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Green & Grain', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
+  await expect(page).toHaveURL(
+    (url) => !url.searchParams.has('q') && !url.searchParams.has('category'),
+  )
+  await expect(page.getByRole('button', { name: 'All cuisines', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('article')).toHaveCount(6)
+
+  await page.getByLabel('Search restaurants or dishes').fill('no-matching-restaurant-123')
+  await page.getByRole('button', { name: 'Submit search', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: 'No restaurants found', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('article')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Clear filters', exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
+  await expect(page).toHaveURL(
+    (url) => !url.searchParams.has('q') && !url.searchParams.has('category'),
+  )
+  await expect(page.getByLabel('Search restaurants or dishes')).toHaveValue('')
+  await expect(page.getByRole('article')).toHaveCount(6)
   await expectNoOverflow(page)
 })
 
@@ -77,17 +179,13 @@ test('cart and authentication survive refresh and checkout clears the cart', asy
   await expect(page.getByRole('heading', { name: 'Order confirmed!', exact: true })).toBeVisible()
   await expect(page.getByText('$29.00', { exact: true }).first()).toBeVisible()
   await page.goto('/cart')
-  await expect(
-    page.getByRole('heading', { name: 'A little empty. A lot of possibilities.', exact: true }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your cart is empty', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Your cart, 0 items', exact: true })).toBeVisible()
 })
 
 test('empty cart makes the next browsing action clear', async ({ page }) => {
   await signIn(page, '/cart')
-  await expect(
-    page.getByRole('heading', { name: 'A little empty. A lot of possibilities.', exact: true }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your cart is empty', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Place order', exact: true })).toHaveCount(0)
   await expectNoOverflow(page)
 })
@@ -147,7 +245,7 @@ for (const action of ['Log out', 'Switch account']) {
 
     await signIn(page, '/cart', 'another@quickbite.demo')
     await expect(
-      page.getByRole('heading', { name: 'A little empty. A lot of possibilities.', exact: true }),
+      page.getByRole('heading', { name: 'Your cart is empty', exact: true }),
     ).toBeVisible()
     await expect(page.getByText('The Green Goddess', { exact: true })).toHaveCount(0)
     await page.reload()
@@ -169,7 +267,7 @@ test('browser history cannot reveal a previous order confirmation after logout',
   await page.goto('/checkout')
   await page.getByRole('button', { name: 'Place order', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Order confirmed!', exact: true })).toBeVisible()
-  await page.getByRole('link', { name: 'Find your next favorite', exact: true }).click()
+  await page.getByRole('link', { name: 'Browse restaurants', exact: true }).click()
   await page.getByRole('button', { name: 'My account', exact: true }).click()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
@@ -184,6 +282,8 @@ test('account dialog is accessible and restores keyboard focus when closed', asy
   const accountButton = page.getByRole('button', { name: 'My account', exact: true })
   await accountButton.click()
   await expect(page.getByRole('dialog', { name: 'Your account', exact: true })).toBeVisible()
+  // Keep the toast in the audit and measure its settled colors after the entry transition.
+  await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCSS('opacity', '1')
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze()

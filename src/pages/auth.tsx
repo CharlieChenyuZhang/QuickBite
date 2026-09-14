@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Leaf, LoaderCircle, LockKeyhole } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FoodImage } from '@/components/food-image'
 import { api, isDemoMode } from '@/lib/api'
 import { useSession } from '@/lib/session'
-import { errorMessage, foodImage } from '@/lib/presentation'
+import { errorMessage } from '@/lib/presentation'
 
 function safeRedirect(value: string | null) {
   return value &&
@@ -35,11 +34,11 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
           first_name: String(data.get('first_name')).trim(),
           last_name: String(data.get('last_name')).trim(),
         })
-        toast.success('Your account is ready. Sign in to find your next bite.')
+        toast.success('Account created. Please sign in.')
         navigate(`/login?redirect=${encodeURIComponent(redirect)}`, { replace: true })
       } else {
         await auth.signIn({ username: String(data.get('username')).trim(), password })
-        toast.success('Welcome back. Let’s find something delicious!')
+        toast.success('Signed in.')
         navigate(redirect, { replace: true })
       }
     },
@@ -67,27 +66,19 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
   return (
     <div className="page-content auth-page">
       <Link to="/" className="back-link">
-        <ArrowLeft size={16} /> Back to discovering
+        <ArrowLeft size={16} /> Browse restaurants
       </Link>
       <section className="auth-card">
         <div className="auth-form-panel">
-          <span className="auth-icon">
-            <UtensilMark />
-          </span>
-          <p className="eyebrow">{signup ? 'GOOD TASTE STARTS HERE' : 'YOUR TABLE IS WAITING'}</p>
-          <h1>{signup ? 'A fresh start.' : 'Welcome back.'}</h1>
+          <h1>{signup ? 'Create an account' : 'Sign in'}</h1>
           <p className="auth-subtitle">
             {signup
-              ? 'Create an account. Find your next favorite bite.'
-              : 'Sign in for something delicious.'}
+              ? 'Create an account to place orders.'
+              : 'Sign in to manage your cart and place an order.'}
           </p>
           {isDemoMode && (
             <div className="demo-notice">
-              <Leaf size={16} />
-              <p>
-                You’re exploring a demo. Use any email and password to try it. No real orders are
-                placed.
-              </p>
+              <p>Demo: use any email and password. No real orders are placed.</p>
             </div>
           )}
           <form onSubmit={submit} className="auth-form">
@@ -195,42 +186,11 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
             </Button>
           </form>
           <p className="auth-switch">
-            {signup ? 'Already part of the table?' : 'New to QuickBite?'}{' '}
+            {signup ? 'Already have an account?' : 'New to QuickBite?'}{' '}
             <Link to={otherLink}>{signup ? 'Sign in' : 'Create an account'}</Link>
           </p>
-          <p className="auth-security">
-            <LockKeyhole size={13} /> Your cravings are in good hands.
-          </p>
-        </div>
-        <div className="auth-visual">
-          <FoodImage
-            src={foodImage('photo-1547592180-85f173990554', 1000)}
-            alt="Freshly prepared food made with colorful seasonal ingredients"
-            eager
-          />
-          <div />
-          <section>
-            <span>
-              <Leaf size={19} /> A LITTLE FRESHNESS GOES A LONG WAY
-            </span>
-            <h2>
-              Good things
-              <br />
-              are on
-              <br />
-              the menu.
-            </h2>
-            <p>
-              Your favorites. Your next discovery.
-              <br />
-              All just a bite away.
-            </p>
-          </section>
         </div>
       </section>
     </div>
   )
-}
-function UtensilMark() {
-  return <Leaf size={27} strokeWidth={1.6} />
 }

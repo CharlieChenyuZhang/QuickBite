@@ -1,15 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Heart,
-  Leaf,
-  LoaderCircle,
-  Plus,
-  Search,
-  ShoppingBag,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Heart, LoaderCircle, Plus, Search } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -89,11 +80,11 @@ export function RestaurantPage() {
     return (
       <div className="page-content">
         <EmptyState
-          title="This restaurant isn’t on the menu"
-          description="Explore our other restaurants to find something delicious."
+          title="Restaurant not found"
+          description="Choose another restaurant to view its menu."
           action={
             <Button asChild>
-              <Link to="/">Discover restaurants</Link>
+              <Link to="/">Browse restaurants</Link>
             </Button>
           }
         />
@@ -103,22 +94,22 @@ export function RestaurantPage() {
   const items = (menu.data ?? []).filter((item) =>
     `${item.name} ${item.description ?? ''}`.toLowerCase().includes(search.toLowerCase().trim()),
   )
+  const cartCount = cart.data?.order_items.reduce((sum, item) => sum + (item.quantity ?? 1), 0) ?? 0
   return (
     <div className="page-content menu-page">
       <Link to="/" className="back-link">
         <ArrowLeft size={16} /> All restaurants
       </Link>
       <section className="restaurant-cover">
-        <FoodImage src={meta.image} alt={restaurant.name} eager />
-        <div className="cover-shade" />
+        {meta.image && (
+          <div className="restaurant-cover-photo">
+            <FoodImage src={meta.image} alt={restaurant.name} eager />
+          </div>
+        )}
         <div className="cover-copy">
-          <span className="cover-category">
-            {meta.cuisine === 'All'
-              ? 'GOOD FOOD STARTS HERE'
-              : `${meta.cuisine.toUpperCase()} · MADE WITH CARE`}
-          </span>
+          {meta.cuisine !== 'All' && <p className="cover-category">{meta.cuisine}</p>}
           <h1>{restaurant.name}</h1>
-          <p>{meta.description}</p>
+          {restaurant.address && <p>{restaurant.address}</p>}
         </div>
         <Button
           size="icon"
@@ -133,9 +124,8 @@ export function RestaurantPage() {
       </section>
       <div className="menu-toolbar">
         <div>
-          <p className="eyebrow">FIND YOUR NEW GO-TO</p>
-          <h2>Made to make your day</h2>
-          <p>{menu.data?.length ?? 0} dishes, plenty to love.</p>
+          <h2>Menu</h2>
+          <p>{menu.data?.length ?? 0} dishes</p>
         </div>
         <div className="menu-search">
           <Search size={17} />
@@ -158,11 +148,11 @@ export function RestaurantPage() {
         />
       ) : !items.length ? (
         <EmptyState
-          title={search ? 'No dishes match that craving' : 'The menu is getting ready'}
+          title={search ? 'No matching dishes' : 'No menu items available'}
           description={
             search
-              ? 'Try a different search to find your next bite.'
-              : 'Check back soon for something delicious.'
+              ? 'Try a different search.'
+              : 'This restaurant has no menu items available right now.'
           }
           action={
             search && (
@@ -176,12 +166,9 @@ export function RestaurantPage() {
         <div className="menu-grid">
           {items.map((item) => (
             <article className="menu-item" key={item.id}>
-              <div className="menu-item-photo">
-                <FoodImage src={item.image_url} alt={item.name} />
-              </div>
               <div className="menu-item-body">
                 <h3>{item.name}</h3>
-                <p>{item.description || 'Prepared with care, ready for your next craving.'}</p>
+                {item.description && <p>{item.description}</p>}
                 <div className="menu-item-bottom">
                   <strong>{money(item.price)}</strong>
                   <Button
@@ -201,22 +188,27 @@ export function RestaurantPage() {
                   </Button>
                 </div>
               </div>
+              {item.image_url && (
+                <div className="menu-item-photo">
+                  <FoodImage src={item.image_url} alt={item.name} />
+                </div>
+              )}
             </article>
           ))}
         </div>
       )}
       <p className="menu-note">
-        <Leaf size={15} /> Have a food allergy? Please contact the restaurant before ordering.
+        Have a food allergy? Contact the restaurant before ordering.
         {restaurant.phone && <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>}
       </p>
       {!!cart.data?.order_items.length && (
         <div className="floating-cart">
           <span>
-            <ShoppingBag size={20} /> Your next great meal is taking shape.
+            {cartCount} {cartCount === 1 ? 'item' : 'items'} · {money(cart.data.total_price)}
           </span>
           <Button asChild>
             <Link to="/cart">
-              View cart · {money(cart.data.total_price)} <ArrowRight size={17} />
+              View cart <ArrowRight size={17} />
             </Link>
           </Button>
         </div>
