@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { QuickBiteApi } from './types'
+import { demoApi as optionalDemoApi } from '@quickbite/testing-data'
 
 let api: QuickBiteApi
 let disposeSessionHarness: (() => Promise<void>) | undefined
@@ -616,7 +617,7 @@ describe('verified sign-out', () => {
   })
 })
 
-describe('demo account isolation', () => {
+describe.skipIf(!optionalDemoApi)('demo account isolation', () => {
   it('logs out without deleting saved carts or exposing another account cart', async () => {
     vi.stubEnv('VITE_DEMO_MODE', 'true')
     vi.resetModules()
@@ -703,13 +704,16 @@ describe('live cross-tab account boundaries', () => {
     expect(channel.postMessage).not.toHaveBeenCalled()
   })
 
-  it('does not connect tab-local demo sessions to a shared auth channel', async () => {
-    mockChannel()
-    vi.stubEnv('VITE_DEMO_MODE', 'true')
-    vi.resetModules()
-    await mountSession()
-    expect(BroadcastChannel).not.toHaveBeenCalled()
-  })
+  it.skipIf(!optionalDemoApi)(
+    'does not connect tab-local demo sessions to a shared auth channel',
+    async () => {
+      mockChannel()
+      vi.stubEnv('VITE_DEMO_MODE', 'true')
+      vi.resetModules()
+      await mountSession()
+      expect(BroadcastChannel).not.toHaveBeenCalled()
+    },
+  )
 
   it('discards a missed account boundary before restoring a suspended tab identity', async () => {
     vi.stubGlobal('BroadcastChannel', undefined)

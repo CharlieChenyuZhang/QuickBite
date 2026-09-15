@@ -27,6 +27,11 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:integration-tools
+      - name: Verify optional mock API
+        run: |
+          if test -f 'testing data/server.test.mjs'; then
+            npm run test:mock
+          fi
       - run: python3 scripts/deploy-aws.test.py
       - run: npm run build
       - name: Build production container

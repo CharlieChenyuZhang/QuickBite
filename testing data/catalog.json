@@ -1,0 +1,290 @@
+[
+  {
+    "id": 1,
+    "name": "Green & Grain",
+    "address": "243 Valencia Street, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 101,
+        "name": "The Green Goddess",
+        "price": 14.5,
+        "description": "Avocado, baby greens, cucumber, quinoa, and our bright herb dressing.",
+        "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 1
+      },
+      {
+        "id": 102,
+        "name": "Harvest Grain Bowl",
+        "price": 15.75,
+        "description": "Roasted sweet potato, warm grains, chickpeas, and lemon tahini.",
+        "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 1
+      },
+      {
+        "id": 103,
+        "name": "Mediterranean Crunch",
+        "price": 14,
+        "description": "Crisp greens, feta, olives, cucumber, and a zesty oregano vinaigrette.",
+        "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 1
+      },
+      {
+        "id": 104,
+        "name": "Miso Mushroom Bowl",
+        "price": 16.5,
+        "description": "Roasted mushrooms, brown rice, edamame, and sesame miso sauce.",
+        "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 1
+      },
+      {
+        "id": 105,
+        "name": "Citrus Avocado Salad",
+        "price": 13.5,
+        "description": "Seasonal citrus, creamy avocado, peppery arugula, and toasted seeds.",
+        "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 1
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Pizzeria Uno",
+    "address": "518 Columbus Avenue, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 201,
+        "name": "Classic Margherita",
+        "price": 18,
+        "description": "San Marzano tomatoes, fresh mozzarella, basil, and extra virgin olive oil.",
+        "image_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 2
+      },
+      {
+        "id": 202,
+        "name": "Hot Honey Pepperoni",
+        "price": 21,
+        "description": "Crispy pepperoni cups, mozzarella, and a drizzle of spicy honey.",
+        "image_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 2
+      },
+      {
+        "id": 203,
+        "name": "Wild Mushroom Pizza",
+        "price": 20,
+        "description": "Roasted mushrooms, garlic cream, mozzarella, and fresh thyme.",
+        "image_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 2
+      },
+      {
+        "id": 204,
+        "name": "Basil Pesto Pasta",
+        "price": 17,
+        "description": "Pasta tossed in basil pesto with cherry tomatoes and parmesan.",
+        "image_url": "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 2
+      },
+      {
+        "id": 205,
+        "name": "Garden Primavera",
+        "price": 19,
+        "description": "Seasonal vegetables, tomato sauce, fresh mozzarella, and basil.",
+        "image_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 2
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "The Burger Club",
+    "address": "1068 Market Street, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 301,
+        "name": "The Club Classic",
+        "price": 15,
+        "description": "Smashed beef patty, American cheese, crisp lettuce, and our house sauce.",
+        "image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 3
+      },
+      {
+        "id": 302,
+        "name": "Double Smash",
+        "price": 18.5,
+        "description": "Two crispy beef patties, double cheese, pickles, and caramelized onions.",
+        "image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 3
+      },
+      {
+        "id": 303,
+        "name": "Smoky BBQ Burger",
+        "price": 17,
+        "description": "Beef patty, smoky barbecue sauce, cheddar, and crispy onions.",
+        "image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 3
+      },
+      {
+        "id": 304,
+        "name": "Garden Club Burger",
+        "price": 16,
+        "description": "A plant-based patty with avocado, crunchy slaw, and tangy house sauce.",
+        "image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 3
+      },
+      {
+        "id": 305,
+        "name": "Sea Salt Fries",
+        "price": 5.5,
+        "description": "Golden, crisp fries finished with flaky sea salt.",
+        "image_url": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 3
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Sakura Kitchen",
+    "address": "1732 Post Street, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 401,
+        "name": "Salmon Avocado Roll",
+        "price": 16,
+        "description": "Fresh salmon and creamy avocado wrapped in seasoned sushi rice.",
+        "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 4
+      },
+      {
+        "id": 402,
+        "name": "Sakura Sushi Set",
+        "price": 24,
+        "description": "A colorful selection of the kitchen’s favorite rolls and nigiri.",
+        "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 4
+      },
+      {
+        "id": 403,
+        "name": "Spicy Tuna Roll",
+        "price": 17,
+        "description": "Tuna, cucumber, spicy mayo, and toasted sesame.",
+        "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 4
+      },
+      {
+        "id": 404,
+        "name": "Miso Ramen",
+        "price": 18,
+        "description": "Springy noodles in a rich miso broth with mushrooms, corn, and egg.",
+        "image_url": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 4
+      },
+      {
+        "id": 405,
+        "name": "Vegetable Udon",
+        "price": 16.5,
+        "description": "Thick udon noodles, seasonal vegetables, and a savory dashi broth.",
+        "image_url": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 4
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Little Bangkok",
+    "address": "421 Larkin Street, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 501,
+        "name": "Classic Pad Thai",
+        "price": 17,
+        "description": "Wok-tossed rice noodles, tamarind, egg, bean sprouts, and crushed peanuts.",
+        "image_url": "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 5
+      },
+      {
+        "id": 502,
+        "name": "Thai Basil Noodles",
+        "price": 17.5,
+        "description": "Wide rice noodles with sweet basil, crisp vegetables, and chili.",
+        "image_url": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 5
+      },
+      {
+        "id": 503,
+        "name": "Green Curry Bowl",
+        "price": 18,
+        "description": "Fragrant coconut green curry with vegetables and jasmine rice.",
+        "image_url": "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 5
+      },
+      {
+        "id": 504,
+        "name": "Sesame Tofu Bowl",
+        "price": 16,
+        "description": "Crispy tofu, crunchy vegetables, jasmine rice, and sesame dressing.",
+        "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 5
+      },
+      {
+        "id": 505,
+        "name": "Bangkok Garden Salad",
+        "price": 13,
+        "description": "Shredded greens, fresh herbs, cucumber, and a lime chili dressing.",
+        "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 5
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Casa de Tacos",
+    "address": "2985 Mission Street, San Francisco",
+    "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1000&q=85",
+    "menu_items": [
+      {
+        "id": 601,
+        "name": "Street Taco Trio",
+        "price": 15,
+        "description": "Three corn tortillas with seasoned chicken, onion, cilantro, and salsa.",
+        "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 6
+      },
+      {
+        "id": 602,
+        "name": "Carne Asada Tacos",
+        "price": 17,
+        "description": "Grilled steak, fresh guacamole, pico de gallo, and a squeeze of lime.",
+        "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 6
+      },
+      {
+        "id": 603,
+        "name": "Baja Fish Tacos",
+        "price": 17.5,
+        "description": "Crispy fish, bright cabbage slaw, and creamy chipotle sauce.",
+        "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 6
+      },
+      {
+        "id": 604,
+        "name": "Roasted Veggie Tacos",
+        "price": 14,
+        "description": "Roasted seasonal vegetables, black beans, avocado, and salsa verde.",
+        "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 6
+      },
+      {
+        "id": 605,
+        "name": "Casa Burrito Bowl",
+        "price": 16,
+        "description": "Cilantro rice, black beans, roasted vegetables, salsa, and guacamole.",
+        "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
+        "restaurant_id": 6
+      }
+    ]
+  }
+]

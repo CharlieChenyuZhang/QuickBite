@@ -1,0 +1,14 @@
+[
+  {
+    "email": "alex@quickbite.test",
+    "password": "QuickBite123!",
+    "first_name": "Alex",
+    "last_name": "Morgan"
+  },
+  {
+    "email": "sam@quickbite.test",
+    "password": "QuickBite123!",
+    "first_name": "Sam",
+    "last_name": "Lee"
+  }
+]

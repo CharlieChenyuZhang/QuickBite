@@ -29,13 +29,23 @@ To use a different backend:
 API_PROXY_TARGET=https://your-backend.example.com npm run dev
 ```
 
-To explore the UI without a running backend:
+To test against a local HTTP mock API without a running backend:
+
+```sh
+npm run dev:mock
+```
+
+Open [localhost:5173](http://localhost:5173/). Test accounts, seed data, reset instructions, and all local mock implementations are in [testing data](<testing data/README.md>). The normal frontend API client calls the local mock through the Vite proxy. Stop and restart this command to reset the server's in-memory data.
+
+For the original browser-only preview:
 
 ```sh
 npm run dev:demo
 ```
 
 Demo mode uses sample restaurants and a simulated account, cart, and checkout. It is explicitly enabled by `VITE_DEMO_MODE=true` and never activates as a fallback for a failed API request. Demo orders are not sent to the backend.
+
+Both mock options use the same catalog in `testing data`. Real API mode and production builds exclude the optional folder, so it can be deleted later without breaking the production build. Stop local mocks before switching to the real backend.
 
 For real backend setup and read-only connectivity checks, see [Live backend integration](docs/live-backend.md). The frontend repository does not contain the Java service or its PostgreSQL configuration. Supply the existing service address instead of pointing the frontend directly at RDS.
 
