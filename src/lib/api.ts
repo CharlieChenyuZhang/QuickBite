@@ -1,20 +1,13 @@
-import { demoApi } from './demo'
+import { demoApi } from '@quickbite/testing-data'
+import { ApiError } from './api-error'
 import type { Cart, MenuItem, QuickBiteApi, Restaurant } from './types'
+
+export { ApiError } from './api-error'
 
 export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 const logoutPath = import.meta.env.VITE_LOGOUT_PATH || '/logout'
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
-}
 
 function csrfToken(): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -190,5 +183,13 @@ const liveApi: QuickBiteApi = {
     ),
 }
 
-// Demo fixtures are an explicit development option, never a fallback for API failures.
-export const api: QuickBiteApi = isDemoMode ? demoApi : liveApi
+function requireDemoApi(): QuickBiteApi {
+  if (!demoApi)
+    throw new Error(
+      'Demo mode requires the optional testing data folder. Use live API mode after removing it.',
+    )
+  return demoApi
+}
+
+// Mock data is opt-in. The live build resolves the optional entry to an empty module.
+export const api: QuickBiteApi = isDemoMode ? requireDemoApi() : liveApi
