@@ -1,0 +1,65 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "QuickBite frontend ECR repository and App Runner image access role",
+  "Parameters": {
+    "RepositoryName": { "Type": "String" }
+  },
+  "Resources": {
+    "Repository": {
+      "Type": "AWS::ECR::Repository",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "RepositoryName": { "Ref": "RepositoryName" },
+        "ImageTagMutability": "IMMUTABLE",
+        "EncryptionConfiguration": { "EncryptionType": "AES256" },
+        "Tags": [{ "Key": "quickbite:component", "Value": "frontend" }]
+      }
+    },
+    "ImageAccessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": { "Service": "build.apprunner.amazonaws.com" },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "PullFrontendImage",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages"
+                  ],
+                  "Resource": { "Fn::GetAtt": ["Repository", "Arn"] }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [{ "Key": "quickbite:component", "Value": "frontend" }]
+      }
+    }
+  },
+  "Outputs": {
+    "RepositoryUri": { "Value": { "Fn::GetAtt": ["Repository", "RepositoryUri"] } },
+    "ImageAccessRoleArn": { "Value": { "Fn::GetAtt": ["ImageAccessRole", "Arn"] } }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "cli": "shadcn@4.21.0",
+  "installedAt": "2026-09-14T06:16:01.325Z",
+  "style": "new-york",
+  "command": "npx --yes shadcn@4.21.0 add button input dialog skeleton badge separator --yes --overwrite",
+  "note": "Hashes identify the official registry responses and pristine CLI output before QuickBite customizations. See README.md in this directory.",
+  "items": [
+    {
+      "name": "button",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/button.json",
+      "registrySha256": "4b8d7d848742727973c1b088af8d15f0b628272a1316f2d2fa344e73ddff9e9c",
+      "generatedSha256": "79dd6f75f8136394442202d6b8b922fb269eaad0a5dba579397c9d5b41f893bb",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/button.tsx",
+          "sha256": "79dd6f75f8136394442202d6b8b922fb269eaad0a5dba579397c9d5b41f893bb"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/input.json",
+      "registrySha256": "b1fffa12ba72ce30a291749012b47235eda110648b8106725ced22b5b31c8f1b",
+      "generatedSha256": "0c9457181f6ddc80969bcf854e92c362903a55b6e889fbef3fd85343ecc4af5b",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/input.tsx",
+          "sha256": "0c9457181f6ddc80969bcf854e92c362903a55b6e889fbef3fd85343ecc4af5b"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/dialog.json",
+      "registrySha256": "0115e3a57aa55a978c5fed0d77f7e98edd694215aae3e569def3fff722ba9f26",
+      "generatedSha256": "dcd488cc5d713da215ce2037efd644f35904df755c70f31534706643db488514",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/dialog.tsx",
+          "sha256": "2ade6074e5fad0a4eb171ead44c43d3301a3c83d186d7236fb1fdbea80ee556b"
+        }
+      ]
+    },
+    {
+      "name": "skeleton",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/skeleton.json",
+      "registrySha256": "1ed4d99f9d632d9697a054eefcd19932abd68cef7808407986f6e14da401edf7",
+      "generatedSha256": "f51ce0fcd31e5c31437382e80ea0af94b4fc3d64221d27091d36824546780a43",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/skeleton.tsx",
+          "sha256": "f51ce0fcd31e5c31437382e80ea0af94b4fc3d64221d27091d36824546780a43"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/badge.json",
+      "registrySha256": "0f988b37cf1c56e7ecc83b1dcf24c9af4e73ce4341da5caf2c9d9b07a551319b",
+      "generatedSha256": "13a9380dfff853ee730c14a52df49f22aecd31f40f2998d7c1e7ec458b6e1650",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/badge.tsx",
+          "sha256": "13a9380dfff853ee730c14a52df49f22aecd31f40f2998d7c1e7ec458b6e1650"
+        }
+      ]
+    },
+    {
+      "name": "separator",
+      "registryUrl": "https://ui.shadcn.com/r/styles/new-york-v4/separator.json",
+      "registrySha256": "4242a9fe839cae9083acff1280b7cccfda10e97bbc83283aed12d2d12bebdc6a",
+      "generatedSha256": "ad7d5403fe337160e41dbf04147896e448ae3a747b8d06660d627d74d60021bc",
+      "registryFiles": [
+        {
+          "path": "registry/new-york-v4/ui/separator.tsx",
+          "sha256": "ad7d5403fe337160e41dbf04147896e448ae3a747b8d06660d627d74d60021bc"
+        }
+      ]
+    }
+  ]
+}
