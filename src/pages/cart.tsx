@@ -15,7 +15,7 @@ function CartLines({ cart, compact = false }: { cart: Cart; compact?: boolean })
   return (
     <ul className={compact ? 'cart-lines compact' : 'cart-lines'}>
       {cart.order_items.map((item, index) => (
-        <li key={item.id ?? `${item.menu_item_name}-${index}`}>
+        <li key={item.order_item_id ?? `${item.menu_item_name}-${index}`}>
           <span className="cart-item-quantity" aria-label={`Quantity ${item.quantity ?? 1}`}>
             {item.quantity ?? 1}
           </span>

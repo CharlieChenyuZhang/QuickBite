@@ -17,9 +17,12 @@ export interface Restaurant {
 }
 
 export interface CartItem {
-  id?: number
-  menu_id?: number
+  order_item_id?: number
+  menu_item_id?: number
+  restaurant_id?: number
   menu_item_name: string
+  menu_item_description?: string
+  menu_item_image_url?: string
   price: number
   quantity?: number
 }

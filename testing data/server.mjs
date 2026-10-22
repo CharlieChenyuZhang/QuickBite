@@ -89,8 +89,8 @@ export async function createMockServer(options = {}) {
     const order_items = (carts.get(email) ?? []).map((menuId, index) => {
       const item = menus.get(menuId)
       return {
-        id: index + 1,
-        menu_id: item.id,
+        order_item_id: index + 1,
+        menu_item_id: item.id,
         menu_item_name: item.name,
         price: Math.round(item.price * 100) / 100,
         quantity: 1,

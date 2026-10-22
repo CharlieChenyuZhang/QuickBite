@@ -104,8 +104,8 @@ export const demoApi: QuickBiteApi = {
     const order_items = [
       ...cart.order_items,
       {
-        id: Math.max(0, ...cart.order_items.map((row) => row.id || 0)) + 1,
-        menu_id: id,
+        order_item_id: Math.max(0, ...cart.order_items.map((row) => row.order_item_id || 0)) + 1,
+        menu_item_id: id,
         menu_item_name: item.name,
         price: item.price,
         quantity: 1,

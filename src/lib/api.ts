@@ -24,12 +24,14 @@ function csrfToken(): string | undefined {
 }
 
 function statusError(status: number, fallback: string, endpoint: string): ApiError {
+  // The Spring backend forwards a duplicate-email signup failure to its protected /error page,
+  // which answers 401 instead of 409.
+  if ((status === 401 || status === 409) && endpoint === '/signup')
+    return new ApiError('An account with this email already exists.', status)
   if (status === 401) return new ApiError('Please sign in to continue.', status)
   if (status === 403) {
     return new ApiError('This request was not authorized. Please refresh and try again.', status)
   }
-  if (status === 409 && endpoint === '/signup')
-    return new ApiError('An account with this email already exists.', status)
   if (status === 429)
     return new ApiError('Too many attempts. Please wait a moment and try again.', status)
   return new ApiError(fallback, status)

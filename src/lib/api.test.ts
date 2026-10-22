@@ -266,6 +266,18 @@ describe('existing Spring Boot API contract', () => {
     )
   })
 
+  it.each([401, 409])('reports a duplicate signup when the backend answers %i', async (status) => {
+    fetchMock.mockResolvedValue(new Response(null, { status }))
+    await expect(
+      api.signup({
+        email: 'alex@example.com',
+        password: 'password123',
+        first_name: 'Alex',
+        last_name: 'Chen',
+      }),
+    ).rejects.toMatchObject({ status, message: 'An account with this email already exists.' })
+  })
+
   it('adds only menu_id and checks out through the unchanged endpoint', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
     await api.addItemToCart(123)
@@ -291,8 +303,8 @@ describe('existing Spring Boot API contract', () => {
     const cart = {
       total_price: 28.5,
       order_items: [
-        { id: 3, menu_item_name: 'Noodles', price: 14.25 },
-        { id: 4, menu_item_name: 'Noodles', price: 14.25 },
+        { order_item_id: 3, menu_item_name: 'Noodles', price: 14.25 },
+        { order_item_id: 4, menu_item_name: 'Noodles', price: 14.25 },
       ],
     }
     fetchMock.mockResolvedValue(jsonResponse(cart))

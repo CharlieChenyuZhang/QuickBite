@@ -99,7 +99,9 @@ async function mockServer(page: Page | BrowserContext) {
       if (state.addStatus === 401) state.authenticated = false
       if (state.addStatus === 200) {
         state.cart = {
-          order_items: [{ id: 1, menu_id: 71, menu_item_name: 'Seasonal Bowl', price: 14.5 }],
+          order_items: [
+            { order_item_id: 1, menu_item_id: 71, menu_item_name: 'Seasonal Bowl', price: 14.5 },
+          ],
           total_price: 14.5,
         }
       }
@@ -356,7 +358,9 @@ test('logout and account changes synchronize private state across live browser t
   ).toBeVisible()
 
   server.cart = {
-    order_items: [{ id: 2, menu_id: 72, menu_item_name: 'Another account meal', price: 22 }],
+    order_items: [
+      { order_item_id: 2, menu_item_id: 72, menu_item_name: 'Another account meal', price: 22 },
+    ],
     total_price: 22,
   }
   await fillLogin(page, 'blair@example.com')
@@ -390,7 +394,9 @@ test('returning after missed account notifications discards stale identity and o
   await otherTab.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(otherTab).toHaveURL(/\/login$/)
   server.cart = {
-    order_items: [{ id: 2, menu_id: 72, menu_item_name: 'Another account meal', price: 22 }],
+    order_items: [
+      { order_item_id: 2, menu_item_id: 72, menu_item_name: 'Another account meal', price: 22 },
+    ],
     total_price: 22,
   }
   await fillLogin(otherTab, 'blair@example.com')

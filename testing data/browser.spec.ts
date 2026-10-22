@@ -61,7 +61,7 @@ test('seeded carts use HTTP cookie sessions, survive refresh, and stay isolated 
   expect(cart.status()).toBe(200)
   expect(await cart.json()).toMatchObject({
     total_price: 32.5,
-    order_items: [{ menu_id: 101 }, { menu_id: 201 }],
+    order_items: [{ menu_item_id: 101 }, { menu_item_id: 201 }],
   })
 
   await signOut(page)
