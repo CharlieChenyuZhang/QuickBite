@@ -83,7 +83,7 @@ test('authenticates the seeded account with an HTTP-only cookie and its seeded c
   const cart = await user.cart()
   assert.equal(cart.total_price, 32.5)
   assert.deepEqual(
-    cart.order_items.map((item) => item.menu_id),
+    cart.order_items.map((item) => item.menu_item_id),
     [101, 201],
   )
   assert.ok(cart.order_items.every((item) => item.quantity === 1 && item.menu_item_name))
